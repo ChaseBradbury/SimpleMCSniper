@@ -12,10 +12,10 @@ usernames = [
 ]
 
 # REPLACE this with your bearer token
-bearer_token = 'bearer_token COOKIE FROM BROWSER'
+bearer_token = 'BEARER_TOKEN'
 
-# How many attempts the sniper makes during a snipe
-num_tries = 6
+# How many attempts the sniper makes during a snipe (API is limited to 3-5 per second or something)
+num_tries = 5
 
 # How long (seconds) before the droptime that the sniper starts
 offset = .5
@@ -24,7 +24,7 @@ offset = .5
 length_of_snipe = .75
 
 # Changes the call to view your profile rather than change your name (so it doesn't accidentally grab a test name)
-testing = True
+testing = False
 
 # API url, shouldn't need to touch this
 api_url = 'https://api.minecraftservices.com/minecraft/profile'
@@ -76,22 +76,22 @@ class ThreadPool:
     self.tasks.join()
 
 # Method for a a single attempt
-def attempt_thread(attempt_data, is_testing):
+def attempt_thread(attempt_data):
     time.sleep(attempt_data['attempt_num'] * length_of_snipe/num_tries)
     my_headers = {'Authorization' : 'Bearer ' + bearer_token}
-    if is_testing:
+    if testing:
         # GET current profile (for testing)
         response = requests.get(api_url, headers=my_headers)
     elif new_profile:
-        # GET current profile (for testing)
+        # POST for a new profile
         response = requests.post(api_url, headers=my_headers, data={ "profileName" : attempt_data['name'] })
     else:
-        response = requests.get(api_url + "/" + attempt_data['name'], headers=my_headers)
-    
+        # PUT for a new profile
+        response = requests.put(api_url + "/name/" + attempt_data['name'], headers=my_headers)
     if (response.status_code == 200):
         print(attempt_data['name'] + ": Attempt " + str(attempt_data['attempt_num']+1) + " Succeeded!")
     else:
-        print(attempt_data['name'] + ": Attempt " + str(attempt_data['attempt_num']+1) + " Failed: " + response.status_code)
+        print(attempt_data['name'] + ": Attempt " + str(attempt_data['attempt_num']+1) + " Failed: " + str(response.status_code))
 
 # Check for token validity
 print("Authenticating...")
