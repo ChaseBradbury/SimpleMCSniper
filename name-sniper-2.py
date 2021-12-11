@@ -14,17 +14,20 @@ usernames = [
 # REPLACE this with your bearer token
 bearer_token = 'BEARER_TOKEN'
 
-# How many attempts the sniper makes during a snipe (API is limited to 3-5 per second or something)
-num_tries = 5
+# How many attempts the sniper makes during a snipe (API is limited to 3 per second for name changes and 6 per second for new names)
+num_tries = 3
 
 # How long (seconds) before the droptime that the sniper starts
-offset = .5
+offset = .25
 
 # How long (seconds) the sniper will snipe for
 length_of_snipe = .75
 
+# Debugging
 # Changes the call to view your profile rather than change your name (so it doesn't accidentally grab a test name)
 testing = False
+# Prints full context of responses and timestamps
+verbose = False
 
 # API url, shouldn't need to touch this
 api_url = 'https://api.minecraftservices.com/minecraft/profile'
@@ -79,19 +82,29 @@ class ThreadPool:
 def attempt_thread(attempt_data):
     time.sleep(attempt_data['attempt_num'] * length_of_snipe/num_tries)
     my_headers = {'Authorization' : 'Bearer ' + bearer_token}
+    start_time = round(time.time() * 1000)
+    if verbose:
+        print("Starting attempt " + str(attempt_data['attempt_num']+1) + " at " + str(start_time))
     if testing:
         # GET current profile (for testing)
         response = requests.get(api_url, headers=my_headers)
     elif new_profile:
         # POST for a new profile
-        response = requests.post(api_url, headers=my_headers, data={ "profileName" : attempt_data['name'] })
+        response = requests.post(api_url, headers=my_headers, json={ "profileName" : attempt_data['name'] })
     else:
         # PUT for a new profile
         response = requests.put(api_url + "/name/" + attempt_data['name'], headers=my_headers)
+    # Read response
+    end_time = round(time.time() * 1000)
+    latency = end_time - start_time
     if (response.status_code == 200):
-        print(attempt_data['name'] + ": Attempt " + str(attempt_data['attempt_num']+1) + " Succeeded!")
+        print(attempt_data['name'] + ": Attempt " + str(attempt_data['attempt_num']+1) + " Succeeded! (" + str(latency) + "ms)")
     else:
-        print(attempt_data['name'] + ": Attempt " + str(attempt_data['attempt_num']+1) + " Failed: " + str(response.status_code))
+        print(attempt_data['name'] + ": Attempt " + str(attempt_data['attempt_num']+1) + " Failed with code " + str(response.status_code) + " (" + str(latency) + "ms)")
+        if verbose:
+            print(response.json())
+    if verbose:
+        print("Finished attempt " + str(attempt_data['attempt_num']+1) + " at " + str(end_time))
 
 # Check for token validity
 print("Authenticating...")
